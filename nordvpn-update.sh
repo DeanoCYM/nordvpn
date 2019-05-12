@@ -36,7 +36,8 @@ ADDR=$RESULTS/uk.ip
 n=0
 for SERVER in $@ ; do
     echo -ne Importing UK IP addresses $(( 100 * ++n / $# ))%...\\r
-    sed -Ene 's/^remote\ ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\ [0-9]+$/\1/p' < $SERVER >> $ADDR
+    sed -Ene 's/^remote\ ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\ [0-9]+$/\1/p' \
+	< $SERVER >> $ADDR
 done
 
 echo -e Importing UK IP addresses 100% ... $# imported, success!
