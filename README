@@ -1,0 +1,5 @@
+This folder contains an update script which pulls and decompresses all of the avaliable nordvpn openvpn server configuration files.
+
+run with ./update.sh
+
+Ellis Rhys Thomas 2019
