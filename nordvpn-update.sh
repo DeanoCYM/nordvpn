@@ -3,13 +3,12 @@ set -e
 
 # NORDVPN-UPDATE.SH
 #
-# Retrieve the NordVPN .ovpn configuration files and installs them into /etc/ovpn/
-#
-#
+# Retrieves the NordVPN .ovpn configuration files for the specified
+# country and protocol and installs them to /etc/ovpn/.
 
 # Argument pre-processing requires getopt from linux-utils for long
 # form (--arg) arguments to process correctly.
-ARG_ERR='\nnordvpn-update [-h] [-c country] [-u url] [-p protocol] [-d directory]\n\nOptions:\n\n h, --help\tdisplay this help and exit\n c, --country\tset server country (uk, us, fr, etc.)\n\t\tdefaults to uk\n p, --protocol\tcommunication protocol (udp, tcp)\n\t\tdefaults to udp\n u, --url\tserver ovpn url\n\t\tdefaults to https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip\n d, --directory\tset installation directory\n\t\tdefaults to :/etc/openvpn\n'
+ARG_ERR='\nnordvpn-update [-h] [-c country] [-u url] [-p protocol] [-d directory]\n\nRetrieves the NordVPN .ovpn configuration files for the specified\ncountry and protocol and installs them to /etc/ovpn/.\n\nOptions:\n\n h, --help\tdisplay this help and exit\n c, --country\tset server country (uk, us, fr, etc.)\n\t\tdefaults to uk\n p, --protocol\tcommunication protocol (udp, tcp)\n\t\tdefaults to udp\n u, --url\tserver ovpn url\n\t\tdefaults to https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip\n d, --directory\tset installation directory\n\t\tdefaults to /etc/openvpn\n'
 
 ARGV=`getopt -o hu:c:p:u:d: \
 	     --long help,url:,country,protocol,url,directory: \
@@ -48,48 +47,42 @@ DIR=$ROOT/ovpn_$PROTOCOL
 set -- $(find $DIR -regextype sed \
 	      -regex ".*$COUNTRY[0-9]\{1,4\}\.nordvpn.com.$PROTOCOL.ovpn")
 
-# Extract and store the common information (configurations,
-# certificates and keys) from the first country's server.
-CONF=$ROOT/nord.conf
-KEY=$ROOT/nord.key
-CERT=$ROOT/nord.crt
-sed -e '/^$/d' -e '/^#/d' -e '/^remote\ [0-9\.\ ]\+$/d' \
-    -e '/<ca>/,/ca>/d' -e '/<tls-auth>/,/tls-auth>/d' \
-    < $1 > $CONF
-sed -ne '/^-----BEGIN\ OpenVPN\ Static\ key\ V1-----$/,/^-----END\ OpenVPN\ Static\ key\ V1-----$/p' \
-    < $1 > $KEY
-sed -ne '/^-----BEGIN\ CERTIFICATE-----$/,/^-----END\ CERTIFICATE-----$/p' \
-    < $1 > $CERT
-
-# Retrieve each unique server address and append to one file.
-ADDR=$ROOT/$COUNTRY
-rm -f $ADDR
-N=0
-for SERVER in $@ ; do
-    echo -ne "Importing $COUNTRY ip addresses $(( 100 * ++N / $# ))% ...\\r"
-    sed -ne '/^remote\ [0-9\.\ ]\+$/p'	< $SERVER >> $ADDR
-    if [ $N -ge 64 ] ; then break ; fi ; # 64 is ovpn max permitted remotes
-done
-
-echo -e "Importing $COUNTRY ip addresses 100% ... Done, $N addresses imported."
-
-# Reconstruct combined ovpn configuration file with multiple remote
-# directives.
-
+# Extract and store configuration
 OVPN=$ROOT/nord-$COUNTRY-$PROTOCOL.ovpn
 {
     echo "# NordVPN $COUNTRY openvpn configuration file"
     echo "# Created by nordvpn-update on $(date)"
     echo "# https://github.com/DeanoCYM/nordvpn-update"
-    cat $CONF $CUSTOMCONF
-    echo "# $N $COUNTRY addresses imported"
-    cat $ADDR
+    sed -e '/^$/d' -e '/^#/d' -e '/^remote\ [0-9\.\ ]\+$/d' \
+	-e '/<ca>/,/ca>/d' -e '/<tls-auth>/,/tls-auth>/d' \
+	< $1
+} > $OVPN
+
+# Custom configuration file is optionally appended if present in
+# $ROOT/custom.conf
+cat $ROOT/custom.conf >> $OVPN
+
+# Remote server addresses
+N=0
+for SERVER in $@ ; do
+    echo -ne "Importing $COUNTRY ip addresses $(( 100 * ++N / $# ))% ...\\r"
+    sed -ne '/^remote\ [0-9\.\ ]\+$/p'	< $SERVER >> $OVPN
+    if [ $N -ge 64 ] ; then break ; fi ; # 64 is ovpn max permitted remotes
+done
+
+echo -e "Importing $COUNTRY ip addresses 100% ... Done, $N addresses imported."
+echo "# $N $COUNTRY addresses imported" >> $OVPN
+
+# Certificate and key
+{
     echo "<ca>"
-    cat $CERT
+    sed -ne '/^-----BEGIN\ CERTIFICATE-----$/,/^-----END\ CERTIFICATE-----$/p' \
+	< $1
     echo "</ca>"
     echo "<tls-auth>"
-    cat $KEY
+    sed -ne '/^-----BEGIN\ OpenVPN\ Static\ key/,/^-----END\ OpenVPN\ Static\ key/p' \
+	< $1
     echo "</tls-auth>"
-} > $OVPN
+} >> $OVPN
 
 echo -e "Created $OVPN.\nSUCCESS."

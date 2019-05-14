@@ -1,5 +1,18 @@
-This folder contains an update script which pulls and decompresses all of the avaliable nordvpn openvpn server configuration files.
 
-run with ./update.sh
+nordvpn-update [-h] [-c country] [-u url] [-p protocol] [-d directory]
 
-Ellis Rhys Thomas 2019
+Retrieves the NordVPN .ovpn configuration files for the specified
+country and protocol and installs them to /etc/ovpn/.
+
+Options:
+
+ h, --help	display this help and exit
+ c, --country	set server country (uk, us, fr, etc.)
+		defaults to uk
+ p, --protocol	communication protocol (udp, tcp)
+		defaults to udp
+ u, --url	server ovpn url
+		defaults to https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip
+ d, --directory	set installation directory
+		defaults to /etc/openvpn
+
