@@ -8,19 +8,21 @@ set -e
 
 # Argument pre-processing requires getopt from linux-utils for long
 # form (--arg) arguments to process correctly.
-ARG_ERR='\nnordvpn-update [-h] [-c country] [-u url] [-p protocol] [-d directory]\n\nRetrieves the NordVPN .ovpn configuration files for the specified\ncountry and protocol and installs them to /etc/ovpn/.\n\nOptions:\n\n h, --help\tdisplay this help and exit\n c, --country\tset server country (uk, us, fr, etc.)\n\t\tdefaults to uk\n p, --protocol\tcommunication protocol (udp, tcp)\n\t\tdefaults to udp\n u, --url\tserver ovpn url\n\t\tdefaults to https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip\n d, --directory\tset installation directory\n\t\tdefaults to /etc/openvpn\n'
+ARG_ERR="\nnordvpn-update [-h] [-c country] [-u url] [-p protocol] [-d directory] [-a custom.conf]\n\nRetrieves the NordVPN .ovpn configuration files for the specified\ncountry and protocol and installs them to /etc/ovpn/.\n\nOptions:\n\n h, --help\tdisplay this help and exit\n c, --country\tset server country (uk, us, fr, etc.)\n\t\tdefaults to uk\n p, --protocol\tcommunication protocol (udp, tcp)\n\t\tdefaults to udp\n u, --url\tserver ovpn url\n\t\tdefaults to https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip\n d, --directory\tset installation directory\n\t\tdefaults to /etc/openvpn\n a, --append\tpath to custom configuration options appended to configuration\n\t\tdefaults to $HOME/.nordvpn/custom.conf\n"
 
-ARGV=`getopt -o hu:c:p:u:d: \
-	     --long help,url:,country,protocol,url,directory: \
+ARGV=`getopt -o hu:c:p:u:d:a: \
+	     --long help,url:,country:,protocol:,url:,directory:,append:,\
 	     -n 'nordvpn-update' -- "$@"`
-if [ $? != 0 ] ; then echo $ARG_ERR  >&2 ; exit 1 ; fi
+if [ $? != 0 ] ; then echo "Invalid Arguments.\n\n$ARG_ERR"  >&2 ; exit 1 ; fi
 eval set -- "$ARGV"
 
 # Set some sane defaults and process arguments
+ROOT="$HOME/.nordvpn"
 COUNTRY='uk'
 URL='https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip'
 DIR='/etc/ovpn'
 PROTOCOL='udp'
+CUSTOM="$ROOT/custom.conf"
 
 while true; do
   case "$1" in
@@ -29,6 +31,7 @@ while true; do
       -p | --protocol  ) PROTOCOL="$2";    shift 2;;
       -u | --url       ) URL="$2";         shift 2;;
       -d | --directory ) DIRECTORY="$2";   shift 2;;
+      -a | --append    ) CUSTOM="$2";      shift 2;;
       --               )                   break;;
       *                ) echo -e $ARG_ERR; exit 1;;
   esac
@@ -36,7 +39,6 @@ done
 
 # Update and unzip NordVPN server configuration files. Only process if
 # the archive is newer than local configuration files.
-ROOT=$HOME/.nordvpn
 mkdir -p $ROOT
 wget --tries=2 --timestamping --directory-prefix=$ROOT $URL
 unzip -uoq $ROOT/ovpn.zip -d $ROOT
@@ -60,7 +62,9 @@ OVPN=$ROOT/nord-$COUNTRY-$PROTOCOL.ovpn
 
 # Custom configuration file is optionally appended if present in
 # $ROOT/custom.conf
-cat $ROOT/custom.conf >> $OVPN
+if [ -f "$FILE" ]; then
+    cat $CUSTOM >> $OVPN
+fi
 
 # Remote server addresses
 N=0
