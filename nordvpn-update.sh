@@ -40,7 +40,7 @@ done
 # Update and unzip NordVPN server configuration files. Only process if
 # the archive is newer than local configuration files.
 mkdir -p $ROOT
-wget --tries=2 --timestamping --directory-prefix=$ROOT $URL
+#wget --tries=2 --timestamping --directory-prefix=$ROOT $URL
 unzip -uoq $ROOT/ovpn.zip -d $ROOT
 
 # Set each of the specified country's servers as shell arguments for
@@ -48,6 +48,10 @@ unzip -uoq $ROOT/ovpn.zip -d $ROOT
 DIR=$ROOT/ovpn_$PROTOCOL
 set -- $(find $DIR -regextype sed \
 	      -regex ".*$COUNTRY[0-9]\{1,4\}\.nordvpn.com.$PROTOCOL.ovpn")
+if [ $# -eq 0 ]; then
+    echo "ERROR. No matches for $COUNTRY with protocol $PROTOCOL."
+    exit 1
+fi
 
 # Extract and store configuration
 OVPN=$ROOT/nord-$COUNTRY-$PROTOCOL.ovpn
