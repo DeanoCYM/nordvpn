@@ -1,4 +1,3 @@
-
 nordvpn-update [-h] [-c country] [-u url] [-p protocol] [-d directory] [-a custom.conf]
 
 Retrieves the NordVPN .ovpn configuration files for the specified
