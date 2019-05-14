@@ -1,14 +1,64 @@
 #!/bin/bash
 set -e
 
-# NORDVPN-UPDATE.SH
+# Author: Ellis Rhys Thomas
+# Script: nordvpn-update.sh
+# Date: 2019
 #
+# Description:
 # Retrieves the NordVPN .ovpn configuration files for the specified
-# country and protocol and installs them to /etc/ovpn/.
+# country and protocol and installs them to /etc/ovpn/. See --help for
+# details.
+#
+# Copyright (c) Ellis Rhys Thomas 2019
+#
+# Permission is hereby granted, free of charge, to any person
+# obtaining a copy of this software and associated documentation files
+# (the "Software"), to deal in the Software without restriction,
+# including without limitation the rights to use, copy, modify, merge,
+# publish, distribute, sublicense, and/or sell copies of the Software,
+# and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+# BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+# ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+function strcat() {
+    # Use permits breaking up long strings
+    local IFS=""
+    echo -n "$*"
+}
 
 # Argument pre-processing requires getopt from linux-utils for long
 # form (--arg) arguments to process correctly.
-ARG_ERR="\nnordvpn-update [-h] [-c country] [-u url] [-p protocol] [-d directory] [-a custom.conf]\n\nRetrieves the NordVPN .ovpn configuration files for the specified\ncountry and protocol and installs them to /etc/ovpn/.\n\nOptions:\n\n h, --help\tdisplay this help and exit\n c, --country\tset server country (uk, us, fr, etc.)\n\t\tdefaults to uk\n p, --protocol\tcommunication protocol (udp, tcp)\n\t\tdefaults to udp\n u, --url\tserver ovpn url\n\t\tdefaults to https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip\n d, --directory\tset installation directory\n\t\tdefaults to /etc/openvpn\n a, --append\tpath to custom configuration options appended to configuration\n\t\tdefaults to $HOME/.nordvpn/custom.conf\n"
+ARG_ERR=$(strcat "nordvpn-update"\
+		 "[-h] [-c country] [-u url] [-p protocol] [-d directory]"\
+		 "[-a custom.conf]\n\n"\
+		 "Retrieves the NordVPN .ovpn"\
+		 "configuration files for the specified\n"\
+		 "country and protocol and installs them to /etc/ovpn/.\n\n"\
+		 "Options:\n\n h, --help\tdisplay this help and exit\n"\
+		 "c, --country\tset server country (uk, us, fr, etc.)\n"\
+		 "\t\tdefaults to uk\n"\
+		 "p, --protocol\tcommunication protocol (udp, tcp)\n"\
+		 "\t\tdefaults to udp\n"\
+		 "u, --url\tserver ovpn url\n"\
+		 "\t\tdefaults to"\
+		 "https://downloads.nordcdn.com/configs/archives/servers/"\
+		 "ovpn.zip\n"\
+		 "d, --directory\tset installation directory\n"\
+		 "\t\tdefaults to /etc/openvpn\n"\
+		 "a, --append\tpath to custom options\n"\
+		 "\t\tdefaults to $HOME/.nordvpn/custom.conf\n")
 
 ARGV=`getopt -o hu:c:p:u:d:a: \
 	     --long help,url:,country:,protocol:,url:,directory:,append:,\
