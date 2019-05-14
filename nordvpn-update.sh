@@ -5,15 +5,15 @@ set -e
 #
 # Retrieve the NordVPN .ovpn configuration files and installs them into /etc/ovpn/
 #
-# 
+#
 
 # Argument pre-processing requires getopt from linux-utils for long
 # form (--arg) arguments to process correctly.
-ARG_ERR='\nnordvpn-update [-h] [-c country] [-u url] [-d directory]\n\nOptions:\n\n h, --help\tdisplay this help and exit\n c, --country\tset server country (uk, us, fr, etc.)\n\t\tdefaults to uk\n u, --url\tserver ovpn url\n\t\tdefaults to https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip\n d, --directory\tset installation directory\n\t\tdefaults to :/etc/openvpn\n'
-       
-ARGV=`getopt -o hu:c:d: \
-	     --long help,url:,country,directory: \
-             -n 'nordvpn-update' -- "$@"`
+ARG_ERR='\nnordvpn-update [-h] [-c country] [-u url] [-p protocol] [-d directory]\n\nOptions:\n\n h, --help\tdisplay this help and exit\n c, --country\tset server country (uk, us, fr, etc.)\n\t\tdefaults to uk\n p, --protocol\tcommunication protocol (udp, tcp)\n\t\tdefaults to udp\n u, --url\tserver ovpn url\n\t\tdefaults to https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip\n d, --directory\tset installation directory\n\t\tdefaults to :/etc/openvpn\n'
+
+ARGV=`getopt -o hu:c:p:u:d: \
+	     --long help,url:,country,protocol,url,directory: \
+	     -n 'nordvpn-update' -- "$@"`
 if [ $? != 0 ] ; then echo $ARG_ERR  >&2 ; exit 1 ; fi
 eval set -- "$ARGV"
 
@@ -21,11 +21,13 @@ eval set -- "$ARGV"
 COUNTRY='uk'
 URL='https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip'
 DIR='/etc/ovpn'
+PROTOCOL='udp'
 
 while true; do
   case "$1" in
       -h | --help      ) echo -e $ARG_ERR; exit 1;;
       -c | --country   ) COUNTRY=true;     shift 2;;
+      -p | --protocol  ) PROTOCOL="$2";    shift 2;;
       -u | --url       ) URL="$2";         shift 2;;
       -d | --directory ) DIRECTORY="$2";   shift 2;;
       --               )                   break;;
@@ -42,9 +44,9 @@ unzip -uoq $ROOT/ovpn.zip -d $ROOT
 
 # Set each of the specified country's servers as shell arguments for
 # easy processing.
-UDP_DIR=$ROOT/ovpn_udp
-set -- $(find $UDP_DIR -regextype sed \
-	      -regex ".*$COUNTRY[0-9]\{1,4\}\.nordvpn.com.udp.ovpn")
+DIR=$ROOT/ovpn_$PROTOCOL
+set -- $(find $DIR -regextype sed \
+	      -regex ".*$COUNTRY[0-9]\{1,4\}\.nordvpn.com.$PROTOCOL.ovpn")
 
 # Extract and store the common information (configurations,
 # certificates and keys) from the first country's server.
@@ -74,7 +76,7 @@ echo -e "Importing $COUNTRY ip addresses 100% ... Done, $N addresses imported."
 # Reconstruct combined ovpn configuration file with multiple remote
 # directives.
 
-OVPN=$ROOT/nord-$COUNTRY.ovpn
+OVPN=$ROOT/nord-$COUNTRY-$PROTOCOL.ovpn
 {
     echo "# NordVPN $COUNTRY openvpn configuration file"
     echo "# Created by nordvpn-update on $(date)"
