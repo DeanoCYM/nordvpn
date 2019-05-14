@@ -27,7 +27,7 @@ CUSTOM="$ROOT/custom.conf"
 while true; do
   case "$1" in
       -h | --help      ) echo -e $ARG_ERR; exit 1;;
-      -c | --country   ) COUNTRY=true;     shift 2;;
+      -c | --country   ) COUNTRY="$2";     shift 2;;
       -p | --protocol  ) PROTOCOL="$2";    shift 2;;
       -u | --url       ) URL="$2";         shift 2;;
       -d | --directory ) DIRECTORY="$2";   shift 2;;
