@@ -45,11 +45,11 @@ unzip -uoq $ROOT/ovpn.zip -d $ROOT
 
 # Set each of the specified country's servers as shell arguments for
 # easy processing.
-DIR=$ROOT/ovpn_$PROTOCOL
+DIR="$ROOT/ovpn_$PROTOCOL"
 set -- $(find $DIR -regextype sed \
 	      -regex ".*$COUNTRY[0-9]\{1,4\}\.nordvpn.com.$PROTOCOL.ovpn")
 if [ $# -eq 0 ]; then
-    echo "ERROR. No matches for $COUNTRY with protocol $PROTOCOL."
+    echo "ERROR. No matches for $COUNTRY with protocol $PROTOCOL." >&2
     exit 1
 fi
 
