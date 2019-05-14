@@ -40,7 +40,7 @@ done
 # Update and unzip NordVPN server configuration files. Only process if
 # the archive is newer than local configuration files.
 mkdir -p $ROOT
-#wget --tries=2 --timestamping --directory-prefix=$ROOT $URL
+wget --tries=2 --timestamping --directory-prefix=$ROOT $URL
 unzip -uoq $ROOT/ovpn.zip -d $ROOT
 
 # Set each of the specified country's servers as shell arguments for
