@@ -7,8 +7,8 @@ set -e
 #
 # 
 
-# Arguement pre-processing requires getopt from linux-utils for long
-# form (--arg) arguements to process correctly.
+# Argument pre-processing requires getopt from linux-utils for long
+# form (--arg) arguments to process correctly.
 ARG_ERR='\nnordvpn-update [-h] [-c country] [-u url] [-d directory]\n\nOptions:\n\n h, --help\tdisplay this help and exit\n c, --country\tset server country (uk, us, fr, etc.)\n\t\tdefaults to uk\n u, --url\tserver ovpn url\n\t\tdefaults to https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip\n d, --directory\tset installation directory\n\t\tdefaults to :/etc/openvpn\n'
        
 ARGV=`getopt -o hu:c:d: \
@@ -17,14 +17,14 @@ ARGV=`getopt -o hu:c:d: \
 if [ $? != 0 ] ; then echo $ARG_ERR  >&2 ; exit 1 ; fi
 eval set -- "$ARGV"
 
-# Set some sane defaults and process arguements
+# Set some sane defaults and process arguments
 COUNTRY='uk'
 URL='https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip'
 DIR='/etc/ovpn'
 
 while true; do
   case "$1" in
-      -h | --help      ) echo -e $ARG_ERR; shift 1;;
+      -h | --help      ) echo -e $ARG_ERR; exit 1;;
       -c | --country   ) COUNTRY=true;     shift 2;;
       -u | --url       ) URL="$2";         shift 2;;
       -d | --directory ) DIRECTORY="$2";   shift 2;;
@@ -40,7 +40,7 @@ mkdir -p $ROOT
 wget --tries=2 --timestamping --directory-prefix=$ROOT $URL
 unzip -uoq $ROOT/ovpn.zip -d $ROOT
 
-# Set each of the specified country's servers as shell arguements for
+# Set each of the specified country's servers as shell arguments for
 # easy processing.
 UDP_DIR=$ROOT/ovpn_udp
 set -- $(find $UDP_DIR -regextype sed \
@@ -59,7 +59,7 @@ sed -ne '/^-----BEGIN\ OpenVPN\ Static\ key\ V1-----$/,/^-----END\ OpenVPN\ Stat
 sed -ne '/^-----BEGIN\ CERTIFICATE-----$/,/^-----END\ CERTIFICATE-----$/p' \
     < $1 > $CERT
 
-# Retreive each unique server address and append to one file.
+# Retrieve each unique server address and append to one file.
 ADDR=$ROOT/$COUNTRY
 rm -f $ADDR
 N=0
