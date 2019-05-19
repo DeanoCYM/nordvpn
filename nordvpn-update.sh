@@ -5,10 +5,8 @@ set -e
 # Script: nordvpn-update.sh
 # Date: 2019
 #
-# Description:
-# Retrieves the NordVPN .ovpn configuration files for the specified
-# country and protocol and installs them to /etc/ovpn/. See --help for
-# details.
+# Description: Retrieves all NordVPN .ovpn configuration files. see
+# --help for details.
 #
 # Copyright (c) Ellis Rhys Thomas 2019
 #
@@ -32,115 +30,65 @@ set -e
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-function strcat() {
-    # Use permits breaking up long strings
-    local IFS=""
-    echo -n "$*"
-}
-
 # Argument pre-processing requires getopt from linux-utils for long
 # form (--arg) arguments to process correctly.
-ARG_ERR=$(strcat "nordvpn-update"\
-		 "[-h] [-c country] [-u url] [-p protocol] [-d directory]"\
-		 "[-a custom.conf]\n\n"\
-		 "Retrieves the NordVPN .ovpn"\
-		 "configuration files for the specified\n"\
-		 "country and protocol and installs them to /etc/ovpn/.\n\n"\
-		 "Options:\n\n h, --help\tdisplay this help and exit\n"\
-		 "c, --country\tset server country (uk, us, fr, etc.)\n"\
-		 "\t\tdefaults to uk\n"\
-		 "p, --protocol\tcommunication protocol (udp, tcp)\n"\
-		 "\t\tdefaults to udp\n"\
-		 "u, --url\tserver ovpn url\n"\
-		 "\t\tdefaults to"\
-		 "https://downloads.nordcdn.com/configs/archives/servers/"\
-		 "ovpn.zip\n"\
-		 "d, --directory\tset installation directory\n"\
-		 "\t\tdefaults to /etc/openvpn\n"\
-		 "a, --append\tpath to custom options\n"\
-		 "\t\tdefaults to $HOME/.nordvpn/custom.conf\n")
+# ARG_ERR=$(strcat "nordvpn-update"\
+#		 "[-h] [-u url]"\
+#		 "[-a custom.conf]\n\n"\
+#		 "Retrieves the NordVPN .ovpn configuration files.\n\n"\
+#		 "Options:\n\n"\
+#		 "h, --help\tdisplay this help and exit\n"\
+#		 "u, --url\tovpn configuration file archive url\n"\
+#		 "\t\tdefaults to "\
+#		 "https://downloads.nordcdn.com/configs/archives/servers/"\
+#		 "ovpn.zip\n")
 
-ARGV=`getopt -o hu:c:p:u:d:a: \
-	     --long help,url:,country:,protocol:,url:,directory:,append:,\
-	     -n 'nordvpn-update' -- "$@"`
-if [ $? != 0 ] ; then echo "Invalid Arguments.\n\n$ARG_ERR"  >&2 ; exit 1 ; fi
-eval set -- "$ARGV"
+# ARGV=`getopt -o hu: --long help,url: -n 'nordvpn-update' -- "$@"`
+# if [ $? != 0 ] ; then echo "Invalid Arguments.\n\n$ARG_ERR"  >&2 ; exit 1 ; fi
+# eval set -- "$ARGV"
+
+if (( $EUID )); then echo "ERROR: $0 must be run as root"; exit 1 ; fi
 
 # Set some sane defaults and process arguments
-ROOT="$HOME/.nordvpn"
-COUNTRY='uk'
+ROOT="/etc/openvpn/client/nordvpn"
 URL='https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip'
-DIR='/etc/ovpn'
-PROTOCOL='udp'
-CUSTOM="$ROOT/custom.conf"
+TARGET="$ROOT/../nordvpn.conf"
 
-while true; do
-  case "$1" in
-      -h | --help      ) echo -e $ARG_ERR; exit 1;;
-      -c | --country   ) COUNTRY="$2";     shift 2;;
-      -p | --protocol  ) PROTOCOL="$2";    shift 2;;
-      -u | --url       ) URL="$2";         shift 2;;
-      -d | --directory ) DIRECTORY="$2";   shift 2;;
-      -a | --append    ) CUSTOM="$2";      shift 2;;
-      --               )                   break;;
-      *                ) echo -e $ARG_ERR; exit 1;;
-  esac
-done
+# while true; do
+#   case "$1" in
+#       -h | --help      ) echo -e $ARG_ERR; exit 1;;
+#       -u | --url       ) URL="$2";         shift 2;;
+#       --               )                   break;;
+#       *                ) echo -e $ARG_ERR; exit 1;;
+#   esac
+# done
 
-# Update and unzip NordVPN server configuration files. Only process if
-# the archive is newer than local configuration files.
+# Only update local files if the server archive is newer than local
+# copy
 mkdir -p $ROOT
 wget --tries=2 --timestamping --directory-prefix=$ROOT $URL
 unzip -uoq $ROOT/ovpn.zip -d $ROOT
+chown -R root:root $ROOT
+chmod -R 400 $ROOT
+echo "NordVPN archive update complete."
 
-# Set each of the specified country's servers as shell arguments for
-# easy processing.
-DIR="$ROOT/ovpn_$PROTOCOL"
-set -- $(find $DIR -regextype sed \
-	      -regex ".*$COUNTRY[0-9]\{1,4\}\.nordvpn.com.$PROTOCOL.ovpn")
-if [ $# -eq 0 ]; then
-    echo "ERROR. No matches for $COUNTRY with protocol $PROTOCOL." >&2
-    exit 1
-fi
+# Get the fastest servers
+COUNTRY="227"
+PROTOCOL="udp"
+LIMIT=1
+AUTH=$ROOT/auth.txt
 
-# Extract and store configuration
-OVPN=$ROOT/nord-$COUNTRY-$PROTOCOL.ovpn
-{
-    echo "# NordVPN $COUNTRY openvpn configuration file"
-    echo "# Created by nordvpn-update on $(date)"
-    echo "# https://github.com/DeanoCYM/nordvpn-update"
-    sed -e '/^$/d' -e '/^#/d' -e '/^remote\ [0-9\.\ ]\+$/d' \
-	-e '/<ca>/,/ca>/d' -e '/<tls-auth>/,/tls-auth>/d' \
-	< $1
-} > $OVPN
+API="https://api.nordvpn.com/v1/servers/recommendations"
+API+="?filters\[country_id\]=$COUNTRY"
+API+="&\[servers_technologies\]\[identifier\]=openvpn_$PROTOCOL"
+API+="&limit=$LIMIT"
 
-# Custom configuration file is optionally appended if present in
-# $ROOT/custom.conf
-if [ -f "$FILE" ]; then
-    cat $CUSTOM >> $OVPN
-fi
+CONF="$ROOT/ovpn_$PROTOCOL/"
+CONF+=$(curl --silent $API \
+	     | jq --raw-output 'limit(1;.[]) | "\(.hostname)"')
+CONF+=".udp.ovpn"
 
-# Remote server addresses
-N=0
-for SERVER in $@ ; do
-    echo -ne "Importing $COUNTRY ip addresses $(( 100 * ++N / $# ))% ...\\r"
-    sed -ne '/^remote\ [0-9\.\ ]\+$/p'	< $SERVER >> $OVPN
-    if [ $N -ge 64 ] ; then break ; fi ; # 64 is ovpn max permitted remotes
-done
+sed -e "s%^\(auth-user-pass\)$%\1 $AUTH%" \
+    < $CONF > $TARGET
 
-echo -e "Importing $COUNTRY ip addresses 100% ... Done, $N addresses imported."
-echo "# $N $COUNTRY addresses imported" >> $OVPN
-
-# Certificate and key
-{
-    echo "<ca>"
-    sed -ne '/^-----BEGIN\ CERTIFICATE-----$/,/^-----END\ CERTIFICATE-----$/p' \
-	< $1
-    echo "</ca>"
-    echo "<tls-auth>"
-    sed -ne '/^-----BEGIN\ OpenVPN\ Static\ key/,/^-----END\ OpenVPN\ Static\ key/p' \
-	< $1
-    echo "</tls-auth>"
-} >> $OVPN
-
-echo -e "Created $OVPN.\nSUCCESS."
+echo -e "NordVPN confifuration link updated.\nfrom:\t$CONF\nto:\t$TARGET"
